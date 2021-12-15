@@ -1,0 +1,8 @@
+name = Panettone - entity example
+description = A simple entity example showing the main steps required to set up your own entity.
+package = Example modules
+version = BACKDROP_VERSION
+backdrop = 1.x
+dependencies[] = field
+configure = admin/structure/panettone/manage
+

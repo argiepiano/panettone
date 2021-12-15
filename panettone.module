@@ -1,0 +1,426 @@
+<?php
+
+/**
+ * @file
+ * Implements the basic functionality required to create and display an entity.
+ *
+ * @todo: Define PanettoneBasic types in code
+ * @todo: Add a single field
+ */
+
+/**
+ * @defgroup panettone Example: Entity
+ * @ingroup examples
+ * @{
+ * Example creating a core Entity API entity.
+ *
+ */
+
+/**
+ * Implements hook_entity_info().
+ *
+ * This is the fundamental description of the entity.
+ *
+ * It provides a single entity with a single bundle and without revision
+ * support.
+ */
+function panettone_entity_info() {
+  $info['panettone'] = array(
+    // A human readable label to identify our entity.
+    'label' => t('Panettone Basic Entity'),
+
+    // (Required) The entity class for our Entity, extending the core Backdrop
+    // Entity class.
+    'entity class' => 'PanettoneBasic',
+
+    // For this test we use the default controller provided by the entity module
+    'controller class' => 'EntityDatabaseStorageController',
+
+    // The table for this entity defined in hook_schema()
+    'base table' => 'panettone',
+
+    // Returns the uri elements of an entity.
+    'uri callback' => 'panettone_uri',
+
+    // IF fieldable == FALSE, we can't attach fields.
+    'fieldable' => TRUE,
+
+    // entity_keys tells the controller what database fields are used for key
+    // functions. It is not required if we don't have bundles or revisions.
+    // Here we do not support a revision, so that entity key is omitted.
+    'entity keys' => array(
+      // The 'id' (basic_id here) is the unique id.
+      'id' => 'basic_id' ,
+      // Bundle will be determined by the 'bundle_type' field.
+      'bundle' => 'bundle_type',
+    ),
+    'bundle keys' => array(
+      'bundle' => 'bundle_type',
+    ),
+
+    // FALSE disables caching. Caching functionality is handled by Backdrop core.
+    'static cache' => TRUE,
+
+    // Bundles are alternative groups of fields or configuration
+    // associated with a base entity type.
+    'bundles' => array(
+      'first_example_bundle' => array(
+        'label' => 'First example bundle',
+        // 'admin' key is used by the Field UI to provide field and
+        // display UI pages.
+        'admin' => array(
+          'path' => 'admin/structure/panettone/manage',
+          'access arguments' => array('administer panettone entities'),
+        ),
+      ),
+    ),
+    // View modes allow entities to be displayed differently based on context.
+    // As a demonstration we'll support "Tweaky", but we could have and support
+    // multiple display modes.
+    'view modes' => array(
+      'tweaky' => array(
+        'label' => t('Tweaky'),
+        'custom settings' => FALSE,
+      ),
+    ),
+  );
+
+  return $info;
+}
+
+/**
+ * Fetch a basic object.
+ *
+ * This function ends up being a shim between the menu system and
+ * panettone_load_multiple().
+ *
+ * This function gets its name from the menu system's wildcard
+ * naming conventions. For example, /path/%wildcard would end
+ * up calling wildcard_load(%wildcard value). In our case defining
+ * the path: examples/panettone/basic/%panettone in
+ * hook_menu() tells Backdrop to call panettone_load().
+ *
+ * @param int $basic_id
+ *   Integer specifying the basic entity id.
+ * @param bool $reset
+ *   A boolean indicating that the internal cache should be reset.
+ *
+ * @return object
+ *   A fully-loaded $basic object or FALSE if it cannot be loaded.
+ *
+ * @see panettone_load_multiple()
+ * @see panettone_menu()
+ */
+function panettone_load($basic_id = NULL, $reset = FALSE) {
+  $basic_ids = (isset($basic_id) ? array($basic_id) : array());
+  $basic = panettone_load_multiple($basic_ids, array(), $reset);
+  return $basic ? reset($basic) : FALSE;
+}
+
+/**
+ * Loads multiple basic entities.
+ *
+ * We only need to pass this request along to entity_load(), which
+ * will in turn call the load() method of our entity controller class.
+ */
+function panettone_load_multiple($basic_ids = FALSE, $conditions = array(), $reset = FALSE) {
+  return entity_load('panettone', $basic_ids, $conditions, $reset);
+}
+
+/**
+ * Implements the uri callback.
+ */
+function panettone_uri($entity) {
+  return array(
+    'path' => 'examples/panettone/basic/' . $entity->basic_id,
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function panettone_menu() {
+
+  // This provides a place for Field API to hang its own
+  // interface and has to be the same as what was defined
+  // in basic_entity_info() above.
+  $items['admin/structure/panettone/manage'] = array(
+    'title' => 'Administer panettone entity type',
+    'page callback' => 'panettone_list_entities',
+    'access arguments' => array('administer panettone entities'),
+  );
+
+  // Add example entities.
+  $items['admin/structure/panettone/manage/add'] = array(
+    'title' => 'Add an Entity Example Basic Entity',
+    'page callback' => 'panettone_add',
+    'access arguments' => array('create panettone entities'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  // List of all panettone entities.
+  $items['admin/structure/panettone/manage/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  // The page to view our entities - needs to follow what
+  // is defined in panettone_uri and will use panettone_load to retrieve
+  // the necessary entity info.
+  $items['examples/panettone/basic/%panettone'] = array(
+    'title callback' => 'panettone_title',
+    'title arguments' => array(3),
+    'page callback' => 'panettone_view',
+    'page arguments' => array(3),
+    'access arguments' => array('view any panettone entity'),
+  );
+
+  // 'View' tab for an individual entity page.
+  $items['examples/panettone/basic/%panettone/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  // 'Edit' tab for an individual entity page.
+  $items['examples/panettone/basic/%panettone/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('panettone_form', 3),
+    'access arguments' => array('edit any panettone entity'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  // Add example entities.
+  $items['examples/panettone/basic/add'] = array(
+    'title' => 'Add an Entity Example Basic Entity',
+    'page callback' => 'panettone_add',
+    'access arguments' => array('create panettone entities'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function panettone_permission() {
+  $permissions = array(
+    'administer panettone entities' => array(
+      'title' => t('Administer panettone entities'),
+    ),
+    'view any panettone entity' => array(
+      'title' => t('View any Entity Example Basic entity'),
+    ),
+    'edit any panettone entity' => array(
+      'title' => t('Edit any Entity Example Basic entity'),
+    ),
+    'create panettone entities' => array(
+      'title' => t('Create Entity Example Basic Entities'),
+    ),
+  );
+  return $permissions;
+}
+
+/**
+ * Returns a render array with all panettone entities.
+ *
+ * In this basic example we know that there won't be many entities,
+ * so we'll just load them all for display. Most implementations would probably do this
+ * with a view.
+ *
+ */
+function panettone_list_entities() {
+  $content = array();
+  // Load all of our entities.
+  $entities = panettone_load_multiple();
+  if (!empty($entities)) {
+    foreach ($entities as $entity) {
+      // Create tabular rows for our entities.
+      $rows[] = array(
+        'data' => array(
+          'id' => $entity->basic_id,
+          'item_description' => l($entity->item_description, 'examples/panettone/basic/' . $entity->basic_id),
+          'bundle' => $entity->bundle_type,
+        ),
+      );
+    }
+    // Put our entities into a themed table. See theme_table() for details.
+    $content['entity_table'] = array(
+      '#theme' => 'table',
+      '#rows' => $rows,
+      '#header' => array(t('ID'), t('Item Description'), t('Bundle')),
+    );
+  }
+  else {
+    // There were no entities. Tell the user.
+    $content[] = array(
+      '#type' => 'item',
+      '#markup' => t('No panettone entities currently exist.'),
+    );
+  }
+  return $content;
+}
+
+/**
+ * Callback for a page title when this entity is displayed.
+ */
+function panettone_title($entity) {
+  return t('Panettone Entity Example (item_description=@item_description)', array('@item_description' => $entity->item_description));
+}
+
+/**
+ * Menu callback to display an entity.
+ *
+ * This callback makes use of the core's new entity_view 
+ */
+function panettone_view($entity, $view_mode = 'tweaky') {
+  return entity_view($entity, $view_mode);
+}
+
+/**
+ * Implements hook_field_extra_fields().
+ *
+ * This exposes the "extra fields" (usually properties that can be configured
+ * as if they were fields) of the entity as pseudo-fields
+ * so that they get handled by the Entity and Field core functionality.
+ * Node titles get treated in a similar manner.
+ */
+function panettone_field_extra_fields() {
+  $form_elements['item_description'] = array(
+    'label' => t('Item Description'),
+    'description' => t('Item Description (an extra form field)'),
+    'weight' => -5,
+  );
+  $display_elements['created'] = array(
+    'label' => t('Creation date'),
+    'description' => t('Creation date (an extra display field)'),
+    'weight' => 0,
+  );
+  $display_elements['item_description'] = array(
+    'label' => t('Item Description'),
+    'description' => t('Just like title, but trying to point out that it is a separate property'),
+    'weight' => 0,
+  );
+
+  // Since we have only one bundle type, we'll just provide the extra_fields
+  // for it here.
+  $extra_fields['panettone']['first_example_bundle']['form'] = $form_elements;
+  $extra_fields['panettone']['first_example_bundle']['display'] = $display_elements;
+
+  return $extra_fields;
+}
+
+/**
+ * Provides a wrapper on the edit form to add a new entity.
+ */
+function panettone_add() {
+  // Create a basic entity structure to be used and passed to the validation
+  // and submission functions.
+  $entity = entity_get_controller('panettone')->create(array('type' => 'panettone', 'bundle_type' => 'first_example_bundle'));
+  return backdrop_get_form('panettone_form', $entity);
+}
+
+/**
+ * Form function to create an panettone entity.
+ *
+ * The pattern is:
+ * - Set up the form for the data that is specific to your
+ *   entity: the columns of your base table.
+ * - Call on the Field API to pull in the form elements
+ *   for fields attached to the entity.
+ */
+function panettone_form($form, &$form_state, $entity) {
+  $form['item_description'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Item Description'),
+    '#required' => TRUE,
+    '#default_value' => $entity->item_description,
+  );
+
+  $form['basic_entity'] = array(
+    '#type' => 'value',
+    '#value' => $entity,
+  );
+
+  field_attach_form('panettone', $entity, $form, $form_state);
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+    '#weight' => 100,
+  );
+  $form['delete'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete'),
+    '#submit' => array('panettone_edit_delete'),
+    '#weight' => 200,
+  );
+
+  return $form;
+}
+
+
+/**
+ * Validation handler for panettone_add_form form.
+ *
+ * We pass things straight through to the Field API to handle validation
+ * of the attached fields.
+ */
+function panettone_form_validate($form, &$form_state) {
+  field_attach_form_validate('panettone', $form_state['values']['basic_entity'], $form, $form_state);
+}
+
+
+/**
+ * Form submit handler: Submits basic_add_form information.
+ */
+function panettone_form_submit($form, &$form_state) {
+  $entity = $form_state['values']['basic_entity'];
+  $entity->item_description = $form_state['values']['item_description'];
+  field_attach_submit('panettone', $entity, $form, $form_state);
+  $entity_id = panettone_save($entity);
+  $form_state['redirect'] = 'examples/panettone/basic/' . $entity_id;
+}
+
+/**
+ * Form deletion handler.
+ *
+ * @todo: 'Are you sure?' message.
+ */
+function panettone_edit_delete($form, &$form_state) {
+  $entity = $form_state['values']['basic_entity'];
+  panettone_delete($entity);
+  backdrop_set_message(t('The entity %item_description (ID %id) has been deleted',
+    array('%item_description' => $entity->item_description, '%id' => $entity->basic_id))
+  );
+  $form_state['redirect'] = 'examples/panettone';
+}
+
+/**
+ * We save the entity by calling the controller.
+ */
+function panettone_save(&$entity) {
+  return entity_get_controller('panettone')->save($entity);
+}
+
+/**
+ * Use the controller to delete the entity.
+ */
+function panettone_delete($entity) {
+  entity_get_controller('panettone')->delete($entity);
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function panettone_autoload_info() {
+  return array(
+    'PanettoneBasicController' => 'panettone.inc',
+    'PanettoneBasicControllerInterface' => 'panettone.inc',
+  );
+}
+
+/**
+ * @} End of "defgroup panettone".
+ */

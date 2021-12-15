@@ -1,0 +1,151 @@
+<?php
+
+/**
+ * @file
+ * Tests for panettone module.
+ *
+ * Verify example module functionality.
+ */
+
+/**
+ * Functionality tests for enitity example module.
+ *
+ * @ingroup panettone
+ */
+class PanettoneTestCase extends BackdropWebTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    // Enable the module.
+    parent::setUp('panettone');
+
+    // Create and login user with access.
+    $permissions = array(
+      'access content',
+      'view any panettone entity',
+      'edit any panettone entity',
+      'create panettone entities',
+      'administer panettone entities',
+      'administer site configuration',
+      'administer fields',
+    );
+    $account = $this->backdropCreateUser($permissions);
+    $this->backdropLogin($account);
+
+    // Attach a field.
+    $field = array(
+      'field_name' => 'panettone_test_text' ,
+      'type' => 'text',
+    );
+    field_create_field($field);
+    $instance = array(
+      'label' => 'Subject',
+      'field_name' => 'panettone_test_text',
+      'entity_type' => 'panettone',
+      'bundle' => 'first_example_bundle',
+    );
+    field_create_instance($instance);
+  }
+
+  /**
+   * Test Entity Example features.
+   *
+   * - CRUD
+   * - Table display
+   * - User access
+   * - Field management
+   * - Display management
+   */
+  public function testPanettoneBasic() {
+    // Create 10 entities.
+    for ($i = 1; $i <= 10; $i++) {
+      $edit[$i]['item_description'] = $this->randomName();
+      $edit[$i]['panettone_test_text[und][0][value]'] = $this->randomName(32);
+
+      $this->backdropPost('examples/panettone/basic/add', $edit[$i], 'Save');
+      $this->assertText('item_description=' . $edit[$i]['item_description']);
+
+      $this->backdropGet('examples/panettone/basic/' . $i);
+      $this->assertText('item_description=' . $edit[$i]['item_description']);
+      $this->assertText($edit[$i]['panettone_test_text[und][0][value]']);
+    }
+
+    // Delete entity 5.
+    $this->backdropPost('examples/panettone/basic/5/edit', $edit[5], 'Delete');
+    $this->backdropGet('examples/panettone/basic/5');
+    $this->assertResponse(404, 'Deleted entity 5 no longer exists');
+    unset($edit[5]);
+
+    // Update entity 2 and verify the update.
+    $edit[2] = array(
+      'item_description' => 'updated entity 2 ',
+      'panettone_test_text[und][0][value]' => 'updated entity 2 test text',
+    );
+    $this->backdropPost('examples/panettone/basic/2/edit', $edit[2], 'Save');
+    $this->assertText('item_description=' . $edit[2]['item_description']);
+    $this->assertText('updated entity 2 test text');
+
+    // View the entity list page  and verify that the items which still exist
+    // are there, and that the deleted #5 no longer is there.
+    $this->backdropGet('admin/structure/panettone/manage');
+    foreach ($edit as $id => $item) {
+      $this->assertRaw('examples/panettone/basic/' . $id . '">' . $item['item_description'] . '</a>');
+    }
+    $this->assertNoRaw('examples/panettone/basic/5">');
+
+    // Add a field through the field UI and verify that it behaves correctly.
+    $field_edit = array(
+      'fields[_add_new_field][label]' => 'New junk field',
+      'fields[_add_new_field][field_name]' => 'new_junk_field',
+      'fields[_add_new_field][type]' => 'text',
+      'fields[_add_new_field][widget_type]' => 'text_textfield',
+    );
+    $this->backdropPost('admin/structure/panettone/manage/fields', $field_edit, t('Save'));
+    $this->backdropPost(NULL, array(), t('Save field settings'));
+    $this->backdropPost(NULL, array(), t('Save settings'));
+    $this->assertResponse(200);
+
+    // Now verify that we can edit and view this entity with fields.
+    $edit[10]['field_new_junk_field[und][0][value]'] = $this->randomName();
+    $this->backdropPost('examples/panettone/basic/10/edit', $edit[10], 'Save');
+    $this->assertResponse(200);
+    $this->assertText('item_description=' . $edit[10]['item_description']);
+    $this->assertText($edit[10]['field_new_junk_field[und][0][value]'], 'Custom field updated successfully');
+
+    // Create and login user without view access.
+    $account = $this->backdropCreateUser(array('access content'));
+    $this->backdropLogin($account);
+    $this->backdropGet('admin/structure/panettone/manage');
+    $this->assertResponse(403);
+    $this->backdropGet('examples/panettone/basic/2');
+    $this->assertResponse(403, 'User does not have permission to view entity');
+
+    // Create and login user with view access but no edit access.
+    $account = $this->backdropCreateUser(array('access content', 'view any panettone entity'));
+    $this->backdropLogin($account);
+    $this->backdropGet('admin/structure/panettone/manage');
+    $this->assertResponse(403, 'Denied access to admin manage page');
+    $this->backdropGet('examples/panettone/basic/2');
+    $this->assertResponse(200, 'User has permission to view entity');
+    $this->backdropGet('examples/panettone/basic/2/edit');
+    $this->assertResponse(403, 'User is denied edit privileges');
+
+    // Create and login user with view and edit but no manage privs.
+    $account = $this->backdropCreateUser(
+      array(
+        'access content',
+        'view any panettone entity',
+        'edit any panettone entity',
+      )
+    );
+    $this->backdropLogin($account);
+    $this->backdropGet('admin/structure/panettone/manage');
+    $this->assertResponse(403, 'Denied access to admin manage page');
+    $this->backdropGet('examples/panettone/basic/2');
+    $this->assertResponse(200, 'User has permission to view entity');
+    $this->backdropGet('examples/panettone/basic/2/edit');
+    $this->assertResponse(200, 'User has edit privileges');
+  }
+}

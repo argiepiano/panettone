@@ -1,0 +1,5 @@
+[PanettoneTestCase]
+name = Entity example functionality
+description = Tests entity functionality.
+group = Example modules
+file = panettone.test

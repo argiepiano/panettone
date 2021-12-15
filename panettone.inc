@@ -44,3 +44,18 @@ class PanettoneBasic extends Entity {
     return panettone_uri($this);
   }
 }
+
+/** 
+ * Extends EntityDatabaseStorageController
+ * 
+ * The main purpose of this class is the override buildContent to theme the output. 
+ */
+class PanettoneBasicController extends EntityDatabaseStorageController {
+  /** 
+   * {@inheritdoc}
+   */
+  public function buildContent(EntityInterface $entity, $view_mode = 'full', $langcode = NULL) {
+    parent::buildContent($entity, $view_mode, $langcode);
+    $entity->content['#theme'] = 'panettone';
+  }
+}

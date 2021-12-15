@@ -33,8 +33,8 @@ function panettone_entity_info() {
     // Entity class.
     'entity class' => 'PanettoneBasic',
 
-    // For this test we use the default controller provided by the entity module
-    'controller class' => 'EntityDatabaseStorageController',
+    // For this test we use a custom controller
+    'controller class' => 'PanettoneBasicController',
 
     // The table for this entity defined in hook_schema()
     'base table' => 'panettone',
@@ -397,12 +397,12 @@ function panettone_form_submit($form, &$form_state) {
  * @todo: 'Are you sure?' message.
  */
 function panettone_edit_delete($form, &$form_state) {
-  $entity = $form_state['values']['basic_entity'];
+  $entity = $form_state['values']['panettone'];
   panettone_delete($entity);
   backdrop_set_message(t('The entity %item_description (ID %id) has been deleted',
     array('%item_description' => $entity->item_description, '%id' => $entity->basic_id))
   );
-  $form_state['redirect'] = 'examples/panettone';
+  $form_state['redirect'] = 'admin/structure/panettone/manage';
 }
 
 /**
@@ -417,7 +417,7 @@ function panettone_save(&$entity) {
  * Use the controller to delete the entity.
  */
 function panettone_delete($entity) {
-  entity_get_controller('panettone')->delete($entity);
+  entity_get_controller('panettone')->delete(array($entity->id()));
 }
 
 /**
@@ -426,9 +426,19 @@ function panettone_delete($entity) {
 function panettone_autoload_info() {
   return array(
     'PanettoneBasic' => 'panettone.inc',
+    'PanettoneBasicController' => 'panettone.inc',
   );
 }
 
-/**
- * @} End of "defgroup panettone".
+/** 
+ * Implements hook_theme().
  */
+function panettone_theme() {
+  return array(
+    'panettone' => array(
+      'render element' => 'elements',
+      'template' => 'templates/panettone',
+      'file' => 'panettone.theme.inc',
+    ),
+  );
+}
